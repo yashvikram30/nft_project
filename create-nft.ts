@@ -1,5 +1,4 @@
 import {
-  createNft,
   fetchDigitalAsset,
   mplTokenMetadata,
 } from "@metaplex-foundation/mpl-token-metadata";
@@ -9,11 +8,18 @@ import {
   getKeypairFromFile,
 } from "@solana-developers/helpers";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import { Connection, LAMPORTS_PER_SOL, clusterApiUrl } from "@solana/web3.js";
+import {
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  clusterApiUrl,
+} from "@solana/web3.js";
+import { createNft } from "@metaplex-foundation/mpl-token-metadata";
 import {
   generateSigner,
   keypairIdentity,
   percentAmount,
+  publicKey,
 } from "@metaplex-foundation/umi";
 
 const connection = new Connection(clusterApiUrl("devnet"));
@@ -33,32 +39,37 @@ umi.use(mplTokenMetadata());
 
 const umiUser = umi.eddsa.createKeypairFromSecretKey(user.secretKey);
 umi.use(keypairIdentity(umiUser));
-
 console.log("Set up umi instance for user");
 
-const collectionMint = generateSigner(umi);
-console.log("Generated collection mint:", collectionMint.publicKey);
+const collectionAddress = publicKey(
+  "DRBoZLvRhsMiXeHBY6zxfcdP5BgScntKoRexDfsvZiLZ"
+);
+console.log("Creating NFT collection with address:", collectionAddress);
+
+const mint = generateSigner(umi);
+
+console.log("Generated mint for NFT:", mint.publicKey);
 const transaction = await createNft(umi, {
-  mint: collectionMint,
-  name: "My Collection",
-  symbol: "COLL",
+  mint,
+  name: "My NFT",
+  symbol: "NFT",
   uri: "https://raw.githubusercontent.com/yashvikram30/nft_project/main/metadata.json",
-  sellerFeeBasisPoints: percentAmount(0),
-  isCollection: true,
+  sellerFeeBasisPoints: percentAmount(10),
+  collection: {
+    key: collectionAddress,
+    verified: false,
+  },
 });
 
-console.log("Created collection NFT transaction:", transaction);
+console.log("Created NFT transaction:", transaction);
 await transaction.sendAndConfirm(umi);
-console.log("Collection NFT created successfully:", collectionMint.publicKey);
 
-await new Promise((resolve) => setTimeout(resolve, 2000));
+console.log("NFT created successfully:", mint.publicKey);
 
-const createdCollectionNft = await fetchDigitalAsset(
-  umi,
-  collectionMint.publicKey
-);
+await new Promise((resolve) => setTimeout(resolve, 8000));
 
+const createdNft = await fetchDigitalAsset(umi, mint.publicKey);
 console.log(
-  "Collection NFT details, address is:",
-  getExplorerLink("address", createdCollectionNft.mint.publicKey, "devnet")
+  "NFT created successfully:",
+  getExplorerLink("address", createdNft.mint.publicKey, "devnet")
 );
